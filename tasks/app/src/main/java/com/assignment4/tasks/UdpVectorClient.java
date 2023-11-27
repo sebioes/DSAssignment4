@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.SocketTimeoutException;
 import java.util.*;
 
 
@@ -53,6 +54,9 @@ public class UdpVectorClient {
             // send the message to the server
             sendData = responseMessage.getBytes();
 
+            DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, port);
+            clientSocket.send(sendPacket);
+
             /*
              * write your code to send message to the server. clientSocket.send(messageTosend);
              */
@@ -69,6 +73,23 @@ public class UdpVectorClient {
                  * You can use the clientSocket.setSoTimeout(timeinmiliseconds); to detect if the all the messages have been received
                  * update the logs list
                  */
+
+                int timeout = 5000;
+                clientSocket.setSoTimeout(timeout);
+
+                while(true) {
+                    try {
+                        DatagramPacket getack = new DatagramPacket(receiveData, receiveData.length);
+                        clientSocket.receive(getack);
+                        String messageFromServer = new String(getack.getData(), 0, getack.getLength());
+                        logs.add(messageFromServer);
+                    } catch (SocketTimeoutException e) {
+                        System.out.println("Timeout reached. All messages received.");
+                        break;
+                    } catch (IOException e) {
+                        break;
+                    }
+                }
 
                 UdpVectorClient uc = new UdpVectorClient();
                 uc.showHistory(logs); // gives out all the unsorted logs stored at the server
@@ -96,6 +117,25 @@ public class UdpVectorClient {
         // prints sorted logs (history) received
         System.out.println("Print sorted conversation using attached vector clocks");
         Map<int[], String> logMap = new HashMap<>();
+
+        //convert logs to logMap where the vector clock is the key (already converted to int[])
+        for(String log : logs ){
+            String[] logArray = log.split(":");
+            String logMessage = logArray[0];
+            String[] logClock = logArray[1].replaceAll("\\s|\\[|\\]", "").split(",");
+            int[] clock = new int[logClock.length];
+            for(int i = 0; i < logClock.length; i++){
+                clock[i] = Integer.parseInt(logClock[i]);
+            }
+            logMap.put(clock, logMessage);
+        }
+
+        //sort the logs by the vector clock using custom comparator "Comparator.comparingInt(Arrays::hashCode)"
+        Map<int[], String> sortedLogs = new TreeMap<>(Comparator.comparingInt(Arrays::hashCode));
+        sortedLogs.putAll(logMap);
+
+        // Print the sorted entries
+        sortedLogs.forEach((key, value) -> System.out.println(Arrays.toString(key) + ": " + value));
 
         /*
          * write your code to sort the logs (history) in ascending order

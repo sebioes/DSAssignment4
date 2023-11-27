@@ -19,9 +19,7 @@ public class LamportTimestamp {
     }
     public void updateClock(int receivedTimestamp){
 
-        if (receivedTimestamp > timestamp) timestamp = receivedTimestamp + 1;
-
-        //timestamp = receivedTimestamp; // update the function to choose max out of the two received timestamps
+        timestamp = Math.max(receivedTimestamp, timestamp) + 1; // update the function to choose max out of the two received timestamps
     }
 
 }
